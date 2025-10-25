@@ -1,40 +1,89 @@
 # Godot MCP Server
 
-A fully functional **Model Context Protocol (MCP)** WebSocket server for **Godot 4.5**, built with Python 3.9+.
+A fully functional **Model Context Protocol (MCP)** integration for **Godot 4.5**, combining a Python WebSocket server with a GDScript editor plugin.
 
 ## Overview
 
-This server implements the Model Context Protocol to enable communication with Godot 4.5 editor through WebSocket connections. It receives MCP commands, logs them, and returns properly formatted JSON responses.
+This project provides complete MCP support for Godot 4.5 through a two-part architecture:
+
+1. **Python WebSocket Server** - Acts as the MCP protocol bridge, receives commands from external tools
+2. **Godot Editor Plugin (GDScript)** - Executes commands within Godot using the Editor API
+
+External tools communicate with the Python server, which forwards commands to the Godot plugin via WebSocket. The plugin executes operations in the Godot editor and returns results.
+
+## Architecture
+
+```
+[External Tool] → [Python MCP Server] ←WebSocket→ [Godot Editor Plugin] → [Godot API]
+```
 
 ## Features
 
+### Python Server
 - **WebSocket Server**: Asynchronous WebSocket server using `websockets` library
-- **Full MCP Support**: Handles 10 core MCP commands for Godot interaction
+- **MCP Protocol**: Handles 10 core MCP commands
 - **Comprehensive Logging**: Logs all requests and responses to file and console
 - **Command-line Configuration**: Flexible port and host configuration
-- **Error Handling**: Robust error handling with detailed error responses
+- **Error Handling**: Robust error handling with detailed JSON responses
+
+### Godot Plugin
+- **Editor Integration**: Full EditorPlugin with WebSocket client
+- **Real Command Execution**: Actually performs operations in Godot (not simulation)
+- **Scene Manipulation**: Add/remove nodes, get/set properties
+- **File Operations**: Read/write project files with filesystem refresh
+- **Project Info**: Access real project settings and Godot version
 
 ## Requirements
 
 - Python 3.9 or higher
+- Godot 4.5
 - websockets library (12.0+)
 
-## Installation
+## Quick Start
 
-1. Clone this repository:
+See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
+
+### Automatic Setup (Recommended)
+
 ```bash
-git clone <repository-url>
-cd godotMCP
+# One-command setup with virtual environment
+bash setup.sh
+
+# Activate virtual environment
+source venv/bin/activate
+
+# Start server
+python godot_mcp_server.py
 ```
 
-2. Install dependencies:
+### Manual Setup
+
 ```bash
+# 1. Create virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate
+
+# 2. Install dependencies
 pip install -r requirements.txt
+
+# 3. Start Python server
+python godot_mcp_server.py
+
+# 4. Open in Godot 4.5
+godot project.godot
+```
+
+The Godot plugin will auto-connect to the Python server. Check the Output panel for connection status.
+
+**💡 Tip:** Always activate the virtual environment before running Python commands:
+```bash
+source venv/bin/activate  # Linux/macOS
+venv\Scripts\activate     # Windows
 ```
 
 ## Usage
 
-### Basic Usage
+### Python Server
 
 Start the server with default settings (localhost:8765):
 ```bash
@@ -293,20 +342,104 @@ Then send a JSON command:
 {"id": "test-1", "command": "GetProjectInfo", "params": {}}
 ```
 
-## Integration with Godot
+## How It Works
 
-This server is designed to work with a Godot 4.5 plugin that:
-1. Connects to this WebSocket server
-2. Receives MCP commands
-3. Executes them within the Godot editor
-4. Returns results back through the WebSocket
+### Integration Flow
+
+1. **External Tool** sends MCP command to Python server (e.g., "AddNode")
+2. **Python Server** logs the command and forwards it to Godot via WebSocket
+3. **Godot Plugin** receives the command through its WebSocket client
+4. **MCP Executor** executes the command using Godot's Editor API
+5. **Result** flows back through the same path to the external tool
+
+### Example: Adding a Node
+
+**External tool sends:**
+```json
+{
+  "command": "AddNode",
+  "params": {
+    "parent_path": "Root",
+    "node_type": "Sprite2D",
+    "node_name": "Player"
+  }
+}
+```
+
+**Python server** logs and forwards to Godot
+
+**Godot plugin** executes:
+```gdscript
+var new_node = Sprite2D.new()
+new_node.name = "Player"
+parent.add_child(new_node)
+```
+
+**Response returned:**
+```json
+{
+  "status": "success",
+  "data": {
+    "node_path": "Root/Player",
+    "message": "Node Player added successfully"
+  }
+}
+```
 
 ## Development
 
-The codebase structure:
-- `godot_mcp_server.py`: Main server implementation
-- `requirements.txt`: Python dependencies
-- `README.md`: This documentation
+### Project Structure
+
+```
+godotMCP/
+├── Python Server
+│   ├── godot_mcp_server.py     # WebSocket server (MCP bridge)
+│   ├── test_client.py          # Test utility
+│   └── requirements.txt        # Python dependencies
+│
+├── Godot Plugin
+│   └── addons/godot_mcp/
+│       ├── plugin.cfg          # Plugin metadata
+│       ├── plugin.gd           # EditorPlugin (entry point)
+│       ├── mcp_client.gd       # WebSocket client (connects to Python)
+│       └── mcp_executor.gd     # Command executor (uses Godot API)
+│
+├── Documentation
+│   ├── README.md               # This file
+│   └── INSTALLATION.md         # Detailed setup guide
+│
+└── project.godot               # Godot project file
+```
+
+### Code Overview
+
+**Python Server (`godot_mcp_server.py`)**
+- WebSocket server using `asyncio` and `websockets`
+- Receives MCP commands, logs them
+- Routes commands to connected Godot clients
+- Returns responses to external tools
+
+**Godot Plugin (`addons/godot_mcp/`)**
+- `plugin.gd`: Main EditorPlugin, manages lifecycle
+- `mcp_client.gd`: WebSocket client, handles communication
+- `mcp_executor.gd`: Executes commands using Godot Editor API
+
+### Implementation Details
+
+All 10 MCP commands are implemented in `mcp_executor.gd`:
+
+| Command | Implementation |
+|---------|---------------|
+| GetProjectInfo | Uses `ProjectSettings` and `Engine.get_version_info()` |
+| GetFileContent | `FileAccess.open()` with `res://` paths |
+| SetFileContent | `FileAccess.open()` + `EditorFileSystem.scan()` |
+| GetSceneNodes | `ResourceLoader.load()` + recursive tree walk |
+| AddNode | `ClassDB.instantiate()` + `add_child()` |
+| RemoveNode | `get_node()` + `queue_free()` |
+| GetNodeProperty | `node.get()` with serialization |
+| SetNodeProperty | `node.set()` with deserialization |
+| FindAllFilesByType | `DirAccess` recursive directory scan |
+| RunToolMethod | Custom tool methods (build, reload, save) |
 
 ## License
 
