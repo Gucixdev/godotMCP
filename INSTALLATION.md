@@ -26,15 +26,62 @@ The Godot MCP system consists of two components:
 
 ## Installation Steps
 
-### 1. Install Python Dependencies
+### Recommended: Automatic Setup (with Virtual Environment)
+
+The easiest way to set up everything:
 
 ```bash
-pip install -r requirements.txt
+# Run the setup script
+bash setup.sh
 ```
 
-### 2. Start the Python MCP Server
+This will:
+- ✅ Check Python version
+- ✅ Create virtual environment in `./venv`
+- ✅ Install all dependencies
+- ✅ Run verification tests
+
+Then activate the virtual environment:
+```bash
+source venv/bin/activate
+```
+
+### Alternative: Manual Installation
+
+#### 1. Create Virtual Environment (Recommended)
 
 ```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate  # Linux/macOS
+# or
+venv\Scripts\activate     # Windows
+```
+
+**Why virtual environment?**
+- Isolates dependencies from other Python projects
+- Prevents version conflicts
+- Makes the project portable
+- Standard Python best practice
+
+#### 2. Install Python Dependencies
+
+```bash
+# Inside virtual environment
+pip install -r requirements.txt
+
+# Or globally (not recommended)
+pip install --user -r requirements.txt
+```
+
+#### 3. Start the Python MCP Server
+
+```bash
+# Make sure virtual environment is activated!
+source venv/bin/activate
+
 # Default (localhost:8765)
 python godot_mcp_server.py
 

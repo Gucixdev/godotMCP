@@ -43,25 +43,43 @@ External tools communicate with the Python server, which forwards commands to th
 
 See [INSTALLATION.md](INSTALLATION.md) for detailed setup instructions.
 
-### 1. Install Python Dependencies
+### Automatic Setup (Recommended)
 
 ```bash
-pip install -r requirements.txt
-```
+# One-command setup with virtual environment
+bash setup.sh
 
-### 2. Start Python Server
+# Activate virtual environment
+source venv/bin/activate
 
-```bash
+# Start server
 python godot_mcp_server.py
 ```
 
-### 3. Open in Godot 4.5
+### Manual Setup
 
 ```bash
+# 1. Create virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start Python server
+python godot_mcp_server.py
+
+# 4. Open in Godot 4.5
 godot project.godot
 ```
 
 The Godot plugin will auto-connect to the Python server. Check the Output panel for connection status.
+
+**💡 Tip:** Always activate the virtual environment before running Python commands:
+```bash
+source venv/bin/activate  # Linux/macOS
+venv\Scripts\activate     # Windows
+```
 
 ## Usage
 
